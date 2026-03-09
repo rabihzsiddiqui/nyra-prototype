@@ -8,11 +8,10 @@ let doneDot          = null;  // inner div: holds pulse animation (scale + opaci
 let currentStateName = null;
 let currentParams    = null;
 
-// Active timers -- all cleared together on any state change
+// Active timers / handlers -- all cleared together on any state change
 let dotsInterval = null;   // listening ellipsis
 let revealTimer  = null;   // speaking character reveal (setInterval)
-let holdTimeout  = null;   // post-reveal 3s hold
-let fadeTimeout  = null;   // slow 800ms auto-fadeout after hold
+let clickHandler = null;   // dismiss-on-click, active only after reveal completes
 
 function injectKeyframes() {
   if (document.getElementById('nyra-text-styles')) return;
@@ -34,8 +33,7 @@ function injectKeyframes() {
 function clearAnimations() {
   if (dotsInterval) { clearInterval(dotsInterval); dotsInterval = null; }
   if (revealTimer)  { clearInterval(revealTimer);  revealTimer  = null; }
-  if (holdTimeout)  { clearTimeout(holdTimeout);   holdTimeout  = null; }
-  if (fadeTimeout)  { clearTimeout(fadeTimeout);   fadeTimeout  = null; }
+  if (clickHandler) { document.removeEventListener('click', clickHandler); clickHandler = null; }
   if (container) {
     container.style.transition =
       `opacity ${TEXT_CONFIG.fadeDuration}ms ease, border-color ${TEXT_CONFIG.fadeDuration}ms ease`;
@@ -254,16 +252,18 @@ export function revealText(text) {
       }
       if (doneWrapper) doneWrapper.style.opacity = '1';
 
-      holdTimeout = setTimeout(() => {
-        holdTimeout = null;
-        container.style.transition = 'opacity 800ms ease';
-        container.style.opacity = '0';
-        fadeTimeout = setTimeout(() => {
-          container.style.transition =
-            `opacity ${TEXT_CONFIG.fadeDuration}ms ease, border-color ${TEXT_CONFIG.fadeDuration}ms ease`;
-          fadeTimeout = null;
-        }, 800);
-      }, 3000);
+      // Box stays until the user clicks anywhere on the screen
+      const dismiss = () => {
+        document.removeEventListener('click', dismiss);
+        clickHandler = null;
+        if (container) {
+          container.style.transition = 'opacity 400ms ease';
+          container.style.opacity = '0';
+          if (doneWrapper) doneWrapper.style.opacity = '0';
+        }
+      };
+      clickHandler = dismiss;
+      document.addEventListener('click', dismiss);
       return;
     }
 
