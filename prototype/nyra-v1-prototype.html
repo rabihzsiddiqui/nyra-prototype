@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nyra</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; width: 100vw; height: 100vh; }
+  canvas { display: block; }
+  #state-hud {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    z-index: 10;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .state-btn {
+    padding: 8px 18px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.35);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    user-select: none;
+  }
+  .state-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6);
+    border-color: rgba(255,255,255,0.2);
+  }
+  .state-btn.active {
+    border-color: rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.1);
+  }
+  .state-key {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.1);
+    margin-right: 6px;
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="state-hud">
+  <div class="state-btn active" data-state="idle" onclick="setState('idle')"><span class="state-key">1</span>Idle</div>
+  <div class="state-btn" data-state="listening" onclick="setState('listening')"><span class="state-key">2</span>Listening</div>
+  <div class="state-btn" data-state="thinking" onclick="setState('thinking')"><span class="state-key">3</span>Thinking</div>
+  <div class="state-btn" data-state="speaking" onclick="setState('speaking')"><span class="state-key">4</span>Speaking</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+
+// ============================================================
+// NOISE (Simplex 3D)
+// ============================================================
+const Noise = (() => {
+  const F3 = 1/3, G3 = 1/6;
+  const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+  const p = [];
+  for (let i = 0; i < 256; i++) p[i] = (Math.random() * 256) | 0;
+  const perm = new Array(512);
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  function dot3(g, x, y, z) { return g[0]*x + g[1]*y + g[2]*z; }
+  function simplex3(x, y, z) {
+    let s=(x+y+z)*F3;let i=Math.floor(x+s),j=Math.floor(y+s),k=Math.floor(z+s);let t=(i+j+k)*G3;
+    let X0=i-t,Y0=j-t,Z0=k-t;let x0=x-X0,y0=y-Y0,z0=z-Z0;let i1,j1,k1,i2,j2,k2;
+    if(x0>=y0){if(y0>=z0){i1=1;j1=0;k1=0;i2=1;j2=1;k2=0;}else if(x0>=z0){i1=1;j1=0;k1=0;i2=1;j2=0;k2=1;}else{i1=0;j1=0;k1=1;i2=1;j2=0;k2=1;}}
+    else{if(y0<z0){i1=0;j1=0;k1=1;i2=0;j2=1;k2=1;}else if(x0<z0){i1=0;j1=1;k1=0;i2=0;j2=1;k2=1;}else{i1=0;j1=1;k1=0;i2=1;j2=1;k2=0;}}
+    let x1=x0-i1+G3,y1=y0-j1+G3,z1=z0-k1+G3;let x2=x0-i2+2*G3,y2=y0-j2+2*G3,z2=z0-k2+2*G3;
+    let x3=x0-1+3*G3,y3=y0-1+3*G3,z3=z0-1+3*G3;let ii=i&255,jj=j&255,kk=k&255;let n0=0,n1=0,n2=0,n3=0;
+    let t0=0.6-x0*x0-y0*y0-z0*z0;if(t0>0){t0*=t0;n0=t0*t0*dot3(grad3[perm[ii+perm[jj+perm[kk]]]%12],x0,y0,z0);}
+    let t1=0.6-x1*x1-y1*y1-z1*z1;if(t1>0){t1*=t1;n1=t1*t1*dot3(grad3[perm[ii+i1+perm[jj+j1+perm[kk+k1]]]%12],x1,y1,z1);}
+    let t2=0.6-x2*x2-y2*y2-z2*z2;if(t2>0){t2*=t2;n2=t2*t2*dot3(grad3[perm[ii+i2+perm[jj+j2+perm[kk+k2]]]%12],x2,y2,z2);}
+    let t3=0.6-x3*x3-y3*y3-z3*z3;if(t3>0){t3*=t3;n3=t3*t3*dot3(grad3[perm[ii+1+perm[jj+1+perm[kk+1]]]%12],x3,y3,z3);}
+    return 32*(n0+n1+n2+n3);
+  }
+  return { simplex3 };
+})();
+
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CONFIG = {
+  states: {
+    idle: {
+      orbColor:  [0.176, 0.106, 0.412],
+      glowColor: [0.290, 0.173, 0.541],
+      glowRadius: 1.0,
+      glowIntensity: 1.0,
+      breathRate: 5.0,
+      breathAmplitude: 0.15,
+      triangleSpread: 0,
+      triangleGlow: 0.4,
+      triangleGlassOpacity: 0.08,
+      triangleEdgeBrightness: 0.7,
+      triangleHoverAmp: 0.04,
+      triangleHoverRate: 8,
+      rotationSpeed: 0,
+      particleBehavior: 'drift-out',
+      particleSpeed: 0.15,
+      particleOpacity: 0.4,
+      innerPulse: 0.0,
+    },
+    listening: {
+      orbColor:  [0.180, 0.800, 0.443],
+      glowColor: [0.365, 0.871, 0.620],
+      glowRadius: 0.75,
+      glowIntensity: 1.3,
+      breathRate: 2.5,
+      breathAmplitude: 0.10,
+      triangleSpread: -0.06,
+      triangleGlow: 0.7,
+      triangleGlassOpacity: 0.13,
+      triangleEdgeBrightness: 1.0,
+      triangleHoverAmp: 0.01,
+      triangleHoverRate: 6,
+      rotationSpeed: 0,
+      particleBehavior: 'flow-in',
+      particleSpeed: 0.5,
+      particleOpacity: 0.6,
+      innerPulse: 0.2,
+    },
+    thinking: {
+      orbColor:  [0.910, 0.640, 0.090],
+      glowColor: [0.941, 0.753, 0.314],
+      glowRadius: 1.0,
+      glowIntensity: 1.2,
+      breathRate: 3.0,
+      breathAmplitude: 0.20,
+      triangleSpread: 0.0,
+      triangleGlow: 0.6,
+      triangleGlassOpacity: 0.10,
+      triangleEdgeBrightness: 0.9,
+      triangleHoverAmp: 0.02,
+      triangleHoverRate: 4,
+      rotationSpeed: 18,
+      particleBehavior: 'orbit',
+      particleSpeed: 0.8,
+      particleOpacity: 0.7,
+      innerPulse: 0.5,
+    },
+    speaking: {
+      orbColor:  [1.000, 0.961, 0.902],
+      glowColor: [1.000, 1.000, 1.000],
+      glowRadius: 1.35,
+      glowIntensity: 1.5,
+      breathRate: 3.0,
+      breathAmplitude: 0.12,
+      triangleSpread: 0.08,
+      triangleGlow: 0.8,
+      triangleGlassOpacity: 0.15,
+      triangleEdgeBrightness: 1.2,
+      triangleHoverAmp: 0.03,
+      triangleHoverRate: 6,
+      rotationSpeed: 0,
+      particleBehavior: 'pulse-out',
+      particleSpeed: 0.6,
+      particleOpacity: 0.8,
+      innerPulse: 0.3,
+    }
+  },
+  transitions: {
+    toIdle: 1800,
+    default: 550,
+    easing: (t) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2
+  }
+};
+
+
+// ============================================================
+// STATE MACHINE
+// ============================================================
+class StateMachine {
+  constructor(config) {
+    this.config = config;
+    this.currentState = 'idle';
+    this.current = { ...config.states.idle };
+    this.target = { ...config.states.idle };
+    this.transitioning = false;
+    this.transitionStart = 0;
+    this.transitionDuration = 0;
+    this.from = { ...config.states.idle };
+  }
+  setState(name) {
+    if (name === this.currentState && !this.transitioning) return;
+    this.currentState = name;
+    this.from = { ...this.current };
+    this.target = { ...this.config.states[name] };
+    this.transitioning = true;
+    this.transitionStart = performance.now();
+    this.transitionDuration = name === 'idle' ? this.config.transitions.toIdle : this.config.transitions.default;
+  }
+  update(now) {
+    if (!this.transitioning) return;
+    const elapsed = now - this.transitionStart;
+    let t = Math.min(elapsed / this.transitionDuration, 1);
+    t = this.config.transitions.easing(t);
+    for (const key of Object.keys(this.target)) {
+      if (typeof this.target[key] === 'string') {
+        this.current[key] = t > 0.5 ? this.target[key] : this.from[key];
+      } else if (Array.isArray(this.target[key])) {
+        this.current[key] = this.from[key].map((v, i) => v + (this.target[key][i] - v) * t);
+      } else {
+        this.current[key] = this.from[key] + (this.target[key] - this.from[key]) * t;
+      }
+    }
+    if (elapsed >= this.transitionDuration) {
+      this.transitioning = false;
+      this.current = { ...this.target };
+    }
+  }
+  get params() { return this.current; }
+}
+
+
+// ============================================================
+// THREE.JS SETUP
+// ============================================================
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.z = 5;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 1);
+document.body.appendChild(renderer.domElement);
+
+
+// ============================================================
+// GLSL NOISE (shared)
+// ============================================================
+const glslNoise = `
+  vec3 mod289v(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+  vec4 mod289v(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+  vec4 permute4(vec4 x){return mod289v(((x*34.0)+1.0)*x);}
+  vec4 taylorInvSqrt4(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+  float snoise(vec3 v){
+    const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);
+    vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);
+    vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;
+    vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);
+    vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;
+    i=mod289v(i);
+    vec4 p=permute4(permute4(permute4(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+    float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;
+    vec4 j=p-49.0*floor(p*ns.z*ns.z);vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);
+    vec4 xf=x_*ns.x+ns.yyyy;vec4 yf=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(xf)-abs(yf);
+    vec4 b0=vec4(xf.xy,yf.xy);vec4 b1=vec4(xf.zw,yf.zw);
+    vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;
+    vec4 sh=-step(h,vec4(0.0));
+    vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+    vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+    vec4 norm=taylorInvSqrt4(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+    p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+    vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);
+    m=m*m;return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+  }
+`;
+
+
+// ============================================================
+// ORB
+// ============================================================
+const orbMaterial = new THREE.ShaderMaterial({
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+  `,
+  fragmentShader: `
+    precision highp float;
+    varying vec2 vUv;
+    uniform vec3 uCoreColor, uGlowColor;
+    uniform float uGlowRadius, uGlowIntensity, uBreath, uTime, uInnerPulse;
+    ${glslNoise}
+    void main() {
+      vec2 center = vUv - 0.5;
+      float dist = length(center);
+      float coreRadius = 0.12 + uBreath * 0.02;
+      float core = smoothstep(coreRadius, coreRadius - 0.01, dist);
+      float n1 = snoise(vec3(center * 8.0, uTime * 0.3)) * 0.5 + 0.5;
+      float n2 = snoise(vec3(center * 14.0, uTime * 0.5 + 100.0)) * 0.3 + 0.5;
+      vec3 coreCol = mix(uCoreColor, uGlowColor, n1 * 0.3 + n2 * uInnerPulse);
+      coreCol *= 1.0 + n1 * 0.15;
+      float gs = 0.35 * uGlowRadius * (1.0 + uBreath * 0.15);
+      float g1 = exp(-dist*dist / (gs*0.08)) * 0.9 * uGlowIntensity;
+      float g2 = exp(-dist*dist / (gs*0.25)) * 0.4 * uGlowIntensity;
+      float g3 = exp(-dist*dist / (gs*0.6))  * 0.15 * uGlowIntensity;
+      float gn = snoise(vec3(center * 3.0, uTime * 0.15)) * 0.08;
+      vec3 color = vec3(0.0);
+      color += uGlowColor * (g3 + gn * 0.3);
+      color += mix(uGlowColor, uCoreColor, 0.5) * g2;
+      color += uCoreColor * g1;
+      color = mix(color, coreCol, core);
+      float haze = exp(-dist*dist / (gs*1.8)) * 0.04 * uGlowIntensity;
+      color += uGlowColor * haze;
+      float alpha = clamp(max(max(g1,g2),max(g3,core)) + haze, 0.0, 1.0);
+      gl_FragColor = vec4(color, alpha);
+    }
+  `,
+  uniforms: {
+    uCoreColor:     { value: new THREE.Vector3(...CONFIG.states.idle.orbColor) },
+    uGlowColor:     { value: new THREE.Vector3(...CONFIG.states.idle.glowColor) },
+    uGlowRadius:    { value: 1.0 },
+    uGlowIntensity: { value: 1.0 },
+    uBreath:         { value: 0.0 },
+    uTime:           { value: 0.0 },
+    uInnerPulse:     { value: 0.0 },
+  },
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+});
+const orbMesh = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), orbMaterial);
+scene.add(orbMesh);
+
+
+// ============================================================
+// WINGS (Glass membrane, tips pointing INWARD toward orb)
+//
+// Left wing:  tip points RIGHT toward orb, base on LEFT
+// Right wing: tip points LEFT toward orb, base on RIGHT
+// ============================================================
+
+// Asymmetric wing vertices (relative to center):
+//   topOuter: the high point of the wing, far out and up
+//   tip:      points inward toward the orb, slightly below center
+//   botOuter: lower point, far out but not as high as topOuter is tall
+//
+// This creates a swept shape where the top edge is longer than the bottom,
+// giving an organic wing silhouette while remaining geometric.
+const WING = {
+  topOuterX: 1.25,    // how far out the top vertex sits
+  topOuterY: 0.95,    // how high the top vertex reaches
+  tipX: 0.50,         // how close the tip gets to orb (gap from center)
+  tipY: -0.10,        // tip sits slightly below center for swept look
+  botOuterX: 1.10,    // bottom vertex slightly less outward than top
+  botOuterY: -0.85,   // how low the bottom vertex drops
+};
+
+const wingGlassFragShader = `
+  precision highp float;
+  varying vec2 vUv;
+  varying vec3 vWorldPos;
+  uniform vec3 uColor, uGlowColor;
+  uniform float uGlassOpacity, uEdgeBrightness, uTime, uFacing;
+  ${glslNoise}
+
+  float distToSeg(vec2 p, vec2 a, vec2 b) {
+    vec2 ab = b - a;
+    float t = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0);
+    return length(p - (a + ab * t));
+  }
+
+  void main() {
+    // Triangle vertices in UV space
+    // tip = inward point near orb, bT = top outer, bB = bottom outer
+    float tipU = uFacing < 0.0 ? 1.0 : 0.0;
+    float baseU = 1.0 - tipU;
+    vec2 tip = vec2(tipU, 0.45);
+    vec2 bT = vec2(baseU, 1.0);
+    vec2 bB = vec2(baseU + 0.1 * uFacing, 0.0);
+    vec2 pt = vUv;
+
+    // How far from the tip toward the outer edge (0=at tip, 1=at outer edge)
+    float outerProx = uFacing < 0.0 ? (1.0 - vUv.x) : vUv.x;
+
+    // Distance to each edge
+    float dTopEdge = distToSeg(pt, tip, bT);    // top edge (tip to top-outer)
+    float dBotEdge = distToSeg(pt, tip, bB);    // bottom edge (tip to bot-outer)
+    float dOuterEdge = distToSeg(pt, bT, bB);   // OUTER edge (top-outer to bot-outer)
+
+    // All-edge glow (subtle, uniform)
+    float minDist = min(min(dTopEdge, dBotEdge), dOuterEdge);
+    float allEdgeGlow = exp(-minDist * minDist / 0.002) * uEdgeBrightness * 0.5;
+
+    // OUTER EDGE gets the main highlight
+    float outerEdgeGlow = exp(-dOuterEdge * dOuterEdge / 0.004) * uEdgeBrightness * 1.0;
+
+    // Top edge gets a secondary, softer glow (it's the long sweeping line)
+    float topEdgeGlow = exp(-dTopEdge * dTopEdge / 0.003) * uEdgeBrightness * 0.35;
+
+    // Soft orb light bleed at the tip (subtle, not a hot spot)
+    float tipDist = length(pt - tip);
+    float tipBleed = exp(-tipDist * tipDist / 0.025) * uEdgeBrightness * 0.25;
+
+    float combinedEdge = max(max(allEdgeGlow, outerEdgeGlow), max(topEdgeGlow, tipBleed));
+
+    // Glass surface fill: brighter toward outer edge, dimmer at tip
+    float noise1 = snoise(vec3(vWorldPos.xy * 5.0, uTime * 0.2)) * 0.3 + 0.5;
+    float noise2 = snoise(vec3(vWorldPos.xy * 10.0, uTime * 0.35 + 50.0));
+
+    float glassBase = uGlassOpacity * (0.15 + outerProx * 0.85);
+
+    // Subtle light caustics
+    float caustic = pow(max(0.0, snoise(vec3(vWorldPos.xy * 7.0 + uTime * 0.08, uTime * 0.12))), 3.0) * 0.08;
+
+    // Shimmer that runs along the outer edge
+    float shimmer = sin(outerProx * 10.0 + uTime * 0.4 + noise1 * 3.0) * 0.015 * uGlassOpacity;
+
+    float fill = glassBase * (0.6 + noise1 * 0.4) + caustic + shimmer;
+
+    // Color: blend toward glow color near the outer edge
+    vec3 surfColor = mix(uColor, uGlowColor, outerProx * 0.5 + noise1 * 0.15);
+
+    vec3 finalColor = surfColor * fill + uGlowColor * combinedEdge;
+
+    // Subtle specular flicker
+    float spec = max(0.0, noise2) * outerProx * 0.03 * uEdgeBrightness;
+    finalColor += vec3(spec);
+
+    float alpha = clamp(fill + combinedEdge, 0.0, 1.0);
+    gl_FragColor = vec4(finalColor, alpha);
+  }
+`;
+
+function createWing(facing) {
+  const dir = facing === 'left' ? -1 : 1;
+  const group = new THREE.Group();
+
+  // For left wing: tip on +x side pointing right, outer vertices on -x side
+  // For right wing: mirrored
+  const tipX  = -WING.tipX * dir;
+  const tipY  = WING.tipY;
+  const topX  = -WING.topOuterX * dir;
+  const topY  = WING.topOuterY;
+  const botX  = -WING.botOuterX * dir;
+  const botY  = WING.botOuterY;
+
+  // Glass mesh: vertex 0 = tip, vertex 1 = topOuter, vertex 2 = botOuter
+  const verts = new Float32Array([
+    tipX, tipY, 0.0,
+    topX, topY, 0.0,
+    botX, botY, 0.0,
+  ]);
+
+  // UVs: tip maps to the inward edge, outer vertices to the far side
+  // For left wing: tip is on right side of UV (u=1), outer on left (u=0)
+  // For right wing: mirrored
+  const uvs = facing === 'left'
+    ? new Float32Array([ 1.0,0.45,  0.0,1.0,  0.1,0.0 ])
+    : new Float32Array([ 0.0,0.45,  1.0,1.0,  0.9,0.0 ]);
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+  geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geom.setIndex([0, 1, 2]);
+
+  const glassMat = new THREE.ShaderMaterial({
+    vertexShader: `
+      varying vec2 vUv; varying vec3 vWorldPos;
+      void main() {
+        vUv = uv;
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: wingGlassFragShader,
+    uniforms: {
+      uColor:          { value: new THREE.Vector3(...CONFIG.states.idle.orbColor) },
+      uGlowColor:      { value: new THREE.Vector3(...CONFIG.states.idle.glowColor) },
+      uGlassOpacity:   { value: 0.08 },
+      uEdgeBrightness: { value: 0.7 },
+      uTime:           { value: 0.0 },
+      uFacing:         { value: dir },
+    },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+  const glassMesh = new THREE.Mesh(geom, glassMat);
+  group.add(glassMesh);
+
+  // Edge outline
+  const edgePts = [
+    new THREE.Vector3(tipX, tipY, 0),
+    new THREE.Vector3(topX, topY, 0),
+    new THREE.Vector3(botX, botY, 0),
+    new THREE.Vector3(tipX, tipY, 0),
+  ];
+  const edgeGeom = new THREE.BufferGeometry().setFromPoints(edgePts);
+  const edgeMat = new THREE.ShaderMaterial({
+    vertexShader: `void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      precision highp float;
+      uniform vec3 uColor; uniform float uOpacity;
+      void main() { gl_FragColor = vec4(uColor * uOpacity * 1.8, uOpacity * 0.85); }
+    `,
+    uniforms: {
+      uColor:   { value: new THREE.Vector3(...CONFIG.states.idle.glowColor) },
+      uOpacity: { value: 0.5 },
+    },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const edgeLine = new THREE.Line(edgeGeom, edgeMat);
+  group.add(edgeLine);
+
+  group.userData = { facing, dir, glassMesh, edgeLine };
+  return group;
+}
+
+const leftWing = createWing('left');
+const rightWing = createWing('right');
+scene.add(leftWing);
+scene.add(rightWing);
+
+
+// ============================================================
+// PARTICLES
+// ============================================================
+const PARTICLE_COUNT = 45;
+const particleGeometry = new THREE.BufferGeometry();
+const pPos = new Float32Array(PARTICLE_COUNT * 3);
+const pSizes = new Float32Array(PARTICLE_COUNT);
+const pAlphas = new Float32Array(PARTICLE_COUNT);
+const pSeeds = [];
+
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  const angle = Math.random() * Math.PI * 2;
+  const radius = 0.3 + Math.random() * 1.0;
+  pPos[i*3]   = Math.cos(angle) * radius;
+  pPos[i*3+1] = Math.sin(angle) * radius;
+  pPos[i*3+2] = 0;
+  pSizes[i] = 2 + Math.random() * 4;
+  pAlphas[i] = 0.1 + Math.random() * 0.4;
+  pSeeds.push({ angle, radius, speed: 0.2 + Math.random() * 0.6, phase: Math.random() * Math.PI * 2 });
+}
+particleGeometry.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+particleGeometry.setAttribute('size', new THREE.BufferAttribute(pSizes, 1));
+particleGeometry.setAttribute('alpha', new THREE.BufferAttribute(pAlphas, 1));
+
+const particleMaterial = new THREE.ShaderMaterial({
+  vertexShader: `
+    attribute float size; attribute float alpha; varying float vAlpha;
+    void main() { vAlpha = alpha; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = size * (200.0 / -mv.z); gl_Position = projectionMatrix * mv; }
+  `,
+  fragmentShader: `
+    precision highp float;
+    uniform vec3 uColor; uniform float uGlobalOpacity; varying float vAlpha;
+    void main() { float d = length(gl_PointCoord - 0.5); float f = exp(-d*d/0.04); float a = f * vAlpha * uGlobalOpacity; gl_FragColor = vec4(uColor*a*2.0, a); }
+  `,
+  uniforms: {
+    uColor: { value: new THREE.Vector3(...CONFIG.states.idle.glowColor) },
+    uGlobalOpacity: { value: 0.4 },
+  },
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+});
+const particles = new THREE.Points(particleGeometry, particleMaterial);
+scene.add(particles);
+
+
+// ============================================================
+// STATE CONTROL
+// ============================================================
+const sm = new StateMachine(CONFIG);
+let currentStateName = 'idle';
+
+function setState(name) {
+  sm.setState(name);
+  currentStateName = name;
+  document.querySelectorAll('.state-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.state === name));
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === '1') setState('idle');
+  if (e.key === '2') setState('listening');
+  if (e.key === '3') setState('thinking');
+  if (e.key === '4') setState('speaking');
+});
+
+let mouseX = 0, mouseY = 0;
+document.addEventListener('mousemove', (e) => {
+  mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+});
+
+
+// ============================================================
+// UPDATE
+// ============================================================
+function updateWing(wingGroup, params, time) {
+  const { facing, dir, glassMesh, edgeLine } = wingGroup.userData;
+  const spread = params.triangleSpread;
+
+  // Compute dynamic vertex positions
+  // Spread pulls tip closer/pushes outer vertices further
+  const tipX  = -(WING.tipX  - spread * 0.4) * dir;
+  const tipY  = WING.tipY;
+  const topX  = -(WING.topOuterX + spread * 0.3) * dir;
+  const topY  = WING.topOuterY;
+  const botX  = -(WING.botOuterX + spread * 0.3) * dir;
+  const botY  = WING.botOuterY;
+
+  const hoverN = Noise.simplex3(time * 0.1, facing === 'left' ? 0 : 10, 0);
+  const hoverY = hoverN * params.triangleHoverAmp;
+  const mx = mouseX * 0.015;
+  const my = mouseY * 0.015;
+
+  // Glass vertices
+  const gp = glassMesh.geometry.attributes.position;
+  gp.setXYZ(0, tipX + mx,  tipY + hoverY + my, 0);
+  gp.setXYZ(1, topX + mx,  topY + hoverY + my, 0);
+  gp.setXYZ(2, botX + mx,  botY + hoverY + my, 0);
+  gp.needsUpdate = true;
+
+  // Edge vertices
+  const ep = edgeLine.geometry.attributes.position;
+  ep.setXYZ(0, tipX + mx,  tipY + hoverY + my, 0);
+  ep.setXYZ(1, topX + mx,  topY + hoverY + my, 0);
+  ep.setXYZ(2, botX + mx,  botY + hoverY + my, 0);
+  ep.setXYZ(3, tipX + mx,  tipY + hoverY + my, 0);
+  ep.needsUpdate = true;
+
+  // Glass uniforms
+  const gu = glassMesh.material.uniforms;
+  gu.uColor.value.set(...params.orbColor);
+  gu.uGlowColor.value.set(...params.glowColor);
+  gu.uGlassOpacity.value = params.triangleGlassOpacity;
+  gu.uEdgeBrightness.value = params.triangleEdgeBrightness;
+  gu.uTime.value = time;
+
+  // Edge uniforms
+  edgeLine.material.uniforms.uColor.value.set(...params.glowColor);
+  edgeLine.material.uniforms.uOpacity.value = params.triangleGlow * 0.55;
+
+  // Thinking oscillation
+  if (params.rotationSpeed > 0) {
+    wingGroup.rotation.z = Math.sin(time * params.rotationSpeed * Math.PI / 180) * 0.06 * -dir;
+  } else {
+    wingGroup.rotation.z *= 0.95;
+  }
+}
+
+function updateParticles(params, time) {
+  const positions = particleGeometry.attributes.position;
+  const alphas = particleGeometry.attributes.alpha;
+  const beh = params.particleBehavior;
+  const spd = params.particleSpeed;
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const s = pSeeds[i];
+    const t = time * spd * s.speed;
+    let x, y;
+    if (beh === 'drift-out') {
+      s.radius += 0.001 * spd;
+      if (s.radius > 1.5) { s.radius = 0.25; s.angle = Math.random() * Math.PI * 2; }
+      const n = Noise.simplex3(t * 0.5, s.phase, 0) * 0.1;
+      x = Math.cos(s.angle + n) * s.radius; y = Math.sin(s.angle + n) * s.radius;
+      alphas.setX(i, (1 - s.radius / 1.5) * 0.3);
+    } else if (beh === 'flow-in') {
+      s.radius -= 0.003 * spd;
+      if (s.radius < 0.18) { s.radius = 1.0 + Math.random() * 0.5; s.angle = Math.random() * Math.PI * 2; }
+      x = Math.cos(s.angle) * s.radius; y = Math.sin(s.angle) * s.radius;
+      alphas.setX(i, (s.radius / 1.5) * 0.5);
+    } else if (beh === 'orbit') {
+      s.angle += 0.015 * spd * s.speed;
+      const r = 0.5 + Math.sin(t + s.phase) * 0.2;
+      x = Math.cos(s.angle) * r; y = Math.sin(s.angle) * r;
+      alphas.setX(i, 0.5 + Math.sin(t * 2 + s.phase) * 0.2);
+    } else if (beh === 'pulse-out') {
+      const pulse = Math.sin(t * 1.5 + s.phase) * 0.5 + 0.5;
+      const r = 0.2 + pulse * 0.9;
+      x = Math.cos(s.angle + t * 0.1) * r; y = Math.sin(s.angle + t * 0.1) * r;
+      alphas.setX(i, (1 - pulse) * 0.5 + 0.1);
+    }
+    positions.setXYZ(i, x, y, 0);
+  }
+  positions.needsUpdate = true;
+  alphas.needsUpdate = true;
+}
+
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const time = clock.getElapsedTime();
+  const now = performance.now();
+
+  sm.update(now);
+  const p = sm.params;
+
+  const bNoise = Noise.simplex3(time * 0.2, 0, 0) * 0.2;
+  const bCycle = (1 + bNoise) * p.breathRate;
+  const breath = Math.sin(time * Math.PI * 2 / bCycle) * p.breathAmplitude;
+
+  let thinkPulse = 0;
+  if (currentStateName === 'thinking') thinkPulse = Noise.simplex3(time * 0.8, 5, 0) * 0.15;
+
+  orbMaterial.uniforms.uCoreColor.value.set(...p.orbColor);
+  orbMaterial.uniforms.uGlowColor.value.set(...p.glowColor);
+  orbMaterial.uniforms.uGlowRadius.value = p.glowRadius;
+  orbMaterial.uniforms.uGlowIntensity.value = p.glowIntensity;
+  orbMaterial.uniforms.uBreath.value = breath + thinkPulse;
+  orbMaterial.uniforms.uTime.value = time;
+  orbMaterial.uniforms.uInnerPulse.value = p.innerPulse;
+
+  orbMesh.position.y = Noise.simplex3(time * 0.08, 50, 0) * 0.03;
+
+  updateWing(leftWing, p, time);
+  updateWing(rightWing, p, time);
+
+  updateParticles(p, time);
+  particleMaterial.uniforms.uColor.value.set(...p.glowColor);
+  particleMaterial.uniforms.uGlobalOpacity.value = p.particleOpacity;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
