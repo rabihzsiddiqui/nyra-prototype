@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nyra</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; width: 100vw; height: 100vh; }
+  canvas { display: block; }
+  #state-hud {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    z-index: 10;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .state-btn {
+    padding: 8px 18px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.35);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    user-select: none;
+  }
+  .state-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6);
+    border-color: rgba(255,255,255,0.2);
+  }
+  .state-btn.active {
+    border-color: rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.1);
+  }
+  .state-key {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.1);
+    margin-right: 6px;
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="state-hud">
+  <div class="state-btn active" data-state="idle"><span class="state-key">1</span>Idle</div>
+  <div class="state-btn" data-state="listening"><span class="state-key">2</span>Listening</div>
+  <div class="state-btn" data-state="thinking"><span class="state-key">3</span>Thinking</div>
+  <div class="state-btn" data-state="speaking"><span class="state-key">4</span>Speaking</div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,5 +1,9 @@
 # Nyra
 
+## Project Overrides
+
+This project is a fullscreen ambient display, not a website. Do NOT apply global styling conventions from other projects (no navigation, no name in the top right corner, no brand dot, no header/footer patterns). The only UI element is a minimal HUD at the bottom of the screen for state controls.
+
 **Repo**: https://github.com/rabihzsiddiqui/nyra-prototype
 
 Nyra is an ambient AI assistant rendered as a glowing orb with asymmetric glass wing structures. It communicates through color, motion, light intensity, and subtle animation. The aesthetic sits between engineered precision and organic life: a digital spirit inspired by Navi from Zelda: Ocarina of Time, redesigned as a futuristic ambient interface.
