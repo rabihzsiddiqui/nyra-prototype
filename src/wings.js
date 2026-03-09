@@ -98,24 +98,27 @@ export function updateWing(wingGroup, params, time, mouseX, mouseY) {
   const botX = -(WING.botOuterX + spread * 0.3) * dir;
   const botY = WING.botOuterY;
 
-  const hoverN = Noise.simplex3(time * 0.1, facing === 'left' ? 0 : 10, 0);
-  const hoverY = hoverN * params.triangleHoverAmp;
+  // Group-level position: X offset pushes the whole wing outward; Y float is noise-driven
+  const floatN = Noise.simplex3(time * 0.12, facing === 'left' ? 20 : 30, 0);
+  wingGroup.position.x = params.wingXOffset * (-dir);
+  wingGroup.position.y = floatN * params.triangleHoverAmp;
+
   const mx = mouseX * 0.015;
   const my = mouseY * 0.015;
 
-  // Glass vertices
+  // Glass vertices (mouse response only, no per-vertex float)
   const gp = glassMesh.geometry.attributes.position;
-  gp.setXYZ(0, tipX + mx, tipY + hoverY + my, 0);
-  gp.setXYZ(1, topX + mx, topY + hoverY + my, 0);
-  gp.setXYZ(2, botX + mx, botY + hoverY + my, 0);
+  gp.setXYZ(0, tipX + mx, tipY + my, 0);
+  gp.setXYZ(1, topX + mx, topY + my, 0);
+  gp.setXYZ(2, botX + mx, botY + my, 0);
   gp.needsUpdate = true;
 
   // Edge vertices
   const ep = edgeLine.geometry.attributes.position;
-  ep.setXYZ(0, tipX + mx, tipY + hoverY + my, 0);
-  ep.setXYZ(1, topX + mx, topY + hoverY + my, 0);
-  ep.setXYZ(2, botX + mx, botY + hoverY + my, 0);
-  ep.setXYZ(3, tipX + mx, tipY + hoverY + my, 0);
+  ep.setXYZ(0, tipX + mx, tipY + my, 0);
+  ep.setXYZ(1, topX + mx, topY + my, 0);
+  ep.setXYZ(2, botX + mx, botY + my, 0);
+  ep.setXYZ(3, tipX + mx, tipY + my, 0);
   ep.needsUpdate = true;
 
   // Glass uniforms
