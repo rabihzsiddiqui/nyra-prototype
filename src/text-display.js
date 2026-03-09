@@ -172,6 +172,23 @@ export function showStatus(text) {
   container.style.opacity = '1';
 }
 
+// Builds a per-character color map for the given text.
+// Returns an array of length text.length where each entry is a CSS color
+// string if that character belongs to a colored word, or null otherwise.
+function buildCharColors(text) {
+  const colors = new Array(text.length).fill(null);
+  for (const [word, color] of Object.entries(TEXT_CONFIG.wordColors ?? {})) {
+    let pos = 0;
+    while ((pos = text.indexOf(word, pos)) !== -1) {
+      for (let i = 0; i < word.length; i++) {
+        colors[pos + i] = color;
+      }
+      pos += word.length;
+    }
+  }
+  return colors;
+}
+
 export function revealText(text) {
   if (!textSpan || !container) return;
   clearAnimations();
@@ -186,6 +203,7 @@ export function revealText(text) {
   container.style.opacity = '1';
 
   const chars = [...text];
+  const charColors = buildCharColors(text);
   let idx = 0;
   const msPerChar = Math.round(1000 / TEXT_CONFIG.revealSpeed);
 
@@ -207,11 +225,13 @@ export function revealText(text) {
       return;
     }
 
+    const charColor = charColors[idx];
     const ch = chars[idx++];
     const span = document.createElement('span');
     span.textContent = ch;
     span.style.opacity    = '1';
     span.style.transition = 'opacity 200ms ease';
+    if (charColor) span.style.color = charColor;
     textSpan.appendChild(span);
 
     requestAnimationFrame(() => {

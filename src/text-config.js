@@ -14,4 +14,10 @@ export const TEXT_CONFIG = {
   fadeDuration: 500,    // ms
   revealSpeed: 40,      // characters per second
   demoResponse: "Hello. I'm Nyra, your ambient assistant. How can I help you today?",
+
+  // Per-word color overrides applied during character reveal.
+  // Add pronouns here when that feature is ready.
+  wordColors: {
+    Nyra: 'rgb(163, 97, 255)',  // idle indigo glow, brightened for legibility
+  },
 };
