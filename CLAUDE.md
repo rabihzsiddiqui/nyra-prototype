@@ -57,6 +57,19 @@ nyra/
 
 ## Visual Elements
 
+### Text Display
+- DOM overlay (not Three.js), positioned over the canvas
+- No visible container, no border, no background panel -- text floats on the void
+- Color inherits from current state's glowColor at 60-70% opacity
+- Center-aligned below the orb, max-width 480-520px
+- Monospace font matching the state HUD style, regular weight, slightly larger
+- Letter-spacing 0.02-0.04em, line-height 1.6-1.7
+- Single message only, never scrollable, text replaces not accumulates
+- Progressive character reveal during speaking state (~40 chars/sec)
+- Fades in/out with state transitions
+- pointer-events: none (never intercepts clicks)
+- This is NOT a chat interface. No bubbles, no history, no input field in V1.
+
 ### Orb
 - Full-screen quad with SDF glow shader (NOT a mesh with post-processing bloom)
 - Three layered exponential falloff glow rings

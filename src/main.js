@@ -5,6 +5,7 @@ import Noise from './noise.js';
 import { orbMesh, updateOrb } from './orb.js';
 import { leftWing, rightWing, updateWing } from './wings.js';
 import { particlesMesh, updateParticles } from './particles.js';
+import { createTextOverlay, update as textUpdate, tick as textTick } from './text-display.js';
 
 // Scene
 const scene = new THREE.Scene();
@@ -22,6 +23,8 @@ scene.add(leftWing);
 scene.add(rightWing);
 scene.add(particlesMesh);
 
+createTextOverlay();
+
 // Mouse tracking for wing hover response
 let mouseX = 0, mouseY = 0;
 document.addEventListener('mousemove', (e) => {
@@ -37,6 +40,8 @@ function setState(name) {
   document.querySelectorAll('.state-btn').forEach(btn =>
     btn.classList.toggle('active', btn.dataset.state === name)
   );
+  // Use target state params (not interpolated) for the color at transition start
+  textUpdate(CONFIG.states[name], name);
 }
 
 // HUD click bindings
@@ -80,6 +85,7 @@ function animate() {
   updateWing(leftWing,  p, time, mouseX, mouseY);
   updateWing(rightWing, p, time, mouseX, mouseY);
   updateParticles(p, time);
+  textTick(breath);
 
   renderer.render(scene, camera);
 }
