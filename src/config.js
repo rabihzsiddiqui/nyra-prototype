@@ -64,7 +64,7 @@ export const CONFIG = {
       glowIntensity: 1.5,
       breathRate: 3.0,
       breathAmplitude: 0.12,
-      triangleSpread: 0.08,
+      triangleSpread: 0.18,
       triangleGlow: 0.8,
       triangleGlassOpacity: 0.15,
       triangleEdgeBrightness: 1.2,

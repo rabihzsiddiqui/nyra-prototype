@@ -3,6 +3,8 @@ import { TEXT_CONFIG } from './text-config.js';
 let container        = null;
 let breathLayer      = null;  // inner div: per-frame opacity, no CSS transition
 let textSpan         = null;
+let doneWrapper      = null;  // outer div: controls 300ms fade-in via opacity transition
+let doneDot          = null;  // inner div: holds pulse animation (scale + opacity)
 let currentStateName = null;
 let currentParams    = null;
 
@@ -21,6 +23,10 @@ function injectKeyframes() {
       0%, 100% { opacity: 1; }
       50%       { opacity: 0.45; }
     }
+    @keyframes nyra-done-pulse {
+      0%, 100% { transform: scale(1.2); opacity: 0.8; }
+      50%       { transform: scale(0.8); opacity: 0.4; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -34,6 +40,7 @@ function clearAnimations() {
     container.style.transition =
       `opacity ${TEXT_CONFIG.fadeDuration}ms ease, border-color ${TEXT_CONFIG.fadeDuration}ms ease`;
   }
+  if (doneWrapper) doneWrapper.style.opacity = '0';
 }
 
 export function createTextOverlay() {
@@ -99,6 +106,31 @@ export function createTextOverlay() {
 
   breathLayer.appendChild(textSpan);
   container.appendChild(breathLayer);
+
+  // Done indicator: wrapper handles the 300ms fade-in; inner dot has the pulse animation.
+  // Two divs are needed because CSS transition and animation cannot both drive opacity on
+  // the same element -- the wrapper's transition controls visibility, the dot's animation
+  // controls the scale+opacity pulse cycle.
+  doneWrapper = document.createElement('div');
+  Object.assign(doneWrapper.style, {
+    position:   'absolute',
+    bottom:     '8px',
+    right:      '8px',
+    opacity:    '0',
+    transition: 'opacity 300ms ease',
+  });
+
+  doneDot = document.createElement('div');
+  Object.assign(doneDot.style, {
+    width:        '8px',
+    height:       '8px',
+    borderRadius: '50%',
+    animation:    'nyra-done-pulse 1.5s ease-in-out infinite',
+  });
+
+  doneWrapper.appendChild(doneDot);
+  container.appendChild(doneWrapper);
+
   document.body.appendChild(container);
 
   return { container, textSpan };
@@ -211,6 +243,16 @@ export function revealText(text) {
     if (idx >= chars.length) {
       clearInterval(revealTimer);
       revealTimer = null;
+
+      // Show done indicator using the current state's glow color
+      if (doneDot && currentParams) {
+        const [r, g, b] = currentParams.glowColor;
+        const ri = Math.round(r * 255);
+        const gi = Math.round(g * 255);
+        const bi = Math.round(b * 255);
+        doneDot.style.background = `rgba(${ri},${gi},${bi},0.6)`;
+      }
+      if (doneWrapper) doneWrapper.style.opacity = '1';
 
       holdTimeout = setTimeout(() => {
         holdTimeout = null;
