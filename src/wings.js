@@ -98,9 +98,15 @@ export function updateWing(wingGroup, params, time, mouseX, mouseY) {
   const botX = -(WING.botOuterX + spread * 0.3) * dir;
   const botY = WING.botOuterY;
 
+  // Responsive x-scale: on portrait viewports the camera sees fewer world units
+  // horizontally, so we shrink x coordinates proportionally to keep wings on-screen.
+  // tan(22.5°) * cameraZ = 2.07 visible world half-height; half-width = 2.07 * aspect.
+  // At aspect < 1 (portrait), wings would clip without this scale.
+  const xScale = Math.min(1.0, window.innerWidth / window.innerHeight);
+
   // Group-level position: X offset pushes the whole wing outward; Y float is noise-driven
   const floatN = Noise.simplex3(time * 0.12, facing === 'left' ? 20 : 30, 0);
-  wingGroup.position.x = params.wingXOffset * (-dir);
+  wingGroup.position.x = params.wingXOffset * (-dir) * xScale;
   wingGroup.position.y = floatN * params.triangleHoverAmp;
 
   const mx = mouseX * 0.015;
@@ -108,17 +114,17 @@ export function updateWing(wingGroup, params, time, mouseX, mouseY) {
 
   // Glass vertices (mouse response only, no per-vertex float)
   const gp = glassMesh.geometry.attributes.position;
-  gp.setXYZ(0, tipX + mx, tipY + my, 0);
-  gp.setXYZ(1, topX + mx, topY + my, 0);
-  gp.setXYZ(2, botX + mx, botY + my, 0);
+  gp.setXYZ(0, tipX * xScale + mx, tipY + my, 0);
+  gp.setXYZ(1, topX * xScale + mx, topY + my, 0);
+  gp.setXYZ(2, botX * xScale + mx, botY + my, 0);
   gp.needsUpdate = true;
 
   // Edge vertices
   const ep = edgeLine.geometry.attributes.position;
-  ep.setXYZ(0, tipX + mx, tipY + my, 0);
-  ep.setXYZ(1, topX + mx, topY + my, 0);
-  ep.setXYZ(2, botX + mx, botY + my, 0);
-  ep.setXYZ(3, tipX + mx, tipY + my, 0);
+  ep.setXYZ(0, tipX * xScale + mx, tipY + my, 0);
+  ep.setXYZ(1, topX * xScale + mx, topY + my, 0);
+  ep.setXYZ(2, botX * xScale + mx, botY + my, 0);
+  ep.setXYZ(3, tipX * xScale + mx, tipY + my, 0);
   ep.needsUpdate = true;
 
   // Glass uniforms
