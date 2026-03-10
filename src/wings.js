@@ -106,7 +106,7 @@ export function updateWing(wingGroup, params, time, mouseX, mouseY) {
 
   // Group-level position: X offset pushes the whole wing outward; Y float is noise-driven
   const floatN = Noise.simplex3(time * 0.12, facing === 'left' ? 20 : 30, 0);
-  wingGroup.position.x = params.wingXOffset * (-dir) * xScale;
+  wingGroup.position.x = params.wingXOffset * (-dir);
   wingGroup.position.y = floatN * params.triangleHoverAmp;
 
   const mx = mouseX * 0.015;
