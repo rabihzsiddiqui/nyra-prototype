@@ -102,7 +102,7 @@ export function updateWing(wingGroup, params, time, mouseX, mouseY) {
   // horizontally, so we shrink x coordinates proportionally to keep wings on-screen.
   // tan(22.5°) * cameraZ = 2.07 visible world half-height; half-width = 2.07 * aspect.
   // At aspect < 1 (portrait), wings would clip without this scale.
-  const xScale = Math.min(1.0, window.innerWidth / window.innerHeight);
+  const xScale = Math.min(0.6, window.innerWidth / window.innerHeight);
 
   // Group-level position: X offset pushes the whole wing outward; Y float is noise-driven
   const floatN = Noise.simplex3(time * 0.12, facing === 'left' ? 20 : 30, 0);
