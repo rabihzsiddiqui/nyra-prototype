@@ -174,6 +174,8 @@ export function showStatus(text) {
 
   // Wipe any content from a previous state (char spans, partial reveal, etc.)
   textSpan.innerHTML = '';
+  textSpan.style.textAlign  = 'center';
+  textSpan.style.fontStyle  = 'italic';
 
   if (text === 'Listening...') {
     textSpan.textContent = 'Listening';
@@ -223,6 +225,8 @@ export function revealText(text) {
   if (!textSpan || !container) return;
   clearAnimations();
   textSpan.innerHTML = '';
+  textSpan.style.textAlign  = TEXT_CONFIG.textAlign;
+  textSpan.style.fontStyle  = 'normal';
 
   if (currentParams) {
     const opacity = TEXT_CONFIG.opacityByState[currentStateName] ?? 0;
