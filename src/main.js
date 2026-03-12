@@ -140,7 +140,7 @@ let holoModeActive = false;
 function updateTextPosition() {
   if (!textContainer || holoModeActive) return;
   const isLandscape = window.innerWidth > window.innerHeight;
-  textContainer.style.bottom = isLandscape ? '4%' : '13%';
+  textContainer.style.bottom = isLandscape ? '0' : '13%';
 }
 updateTextPosition();
 
