@@ -7,6 +7,8 @@ import { leftWing, rightWing, updateWing } from './wings.js';
 import { particlesMesh, updateParticles } from './particles.js';
 import { createTextOverlay, update as textUpdate, tick as textTick } from './text-display.js';
 
+const isPeppersGhost = new URLSearchParams(window.location.search).get('peppersghost') === 'true';
+
 // Scene
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -18,12 +20,17 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x000000, 1);
 document.body.appendChild(renderer.domElement);
 
+if (isPeppersGhost) {
+  renderer.domElement.style.transform = 'scaleY(-1)';
+  document.getElementById('state-hud').style.display = 'none';
+} else {
+  createTextOverlay();
+}
+
 scene.add(orbMesh);
 scene.add(leftWing);
 scene.add(rightWing);
 scene.add(particlesMesh);
-
-createTextOverlay();
 
 // Mouse tracking for wing hover response
 let mouseX = 0, mouseY = 0;
@@ -56,6 +63,32 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '3') setState('thinking');
   if (e.key === '4') setState('speaking');
 });
+
+// Pepper's Ghost mode: auto-cycle states and request wake lock
+if (isPeppersGhost) {
+  const CYCLE = [
+    { state: 'idle',      duration: 5000 },
+    { state: 'listening', duration: 3000 },
+    { state: 'thinking',  duration: 4000 },
+    { state: 'speaking',  duration: 6000 },
+  ];
+  let cycleIdx = 0;
+  function runCycle() {
+    const { state, duration } = CYCLE[cycleIdx];
+    setState(state);
+    cycleIdx = (cycleIdx + 1) % CYCLE.length;
+    setTimeout(runCycle, duration);
+  }
+  runCycle();
+
+  if ('wakeLock' in navigator) {
+    const requestWakeLock = () => navigator.wakeLock.request('screen').catch(() => {});
+    requestWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    });
+  }
+}
 
 // Render loop
 const clock = new THREE.Clock();
