@@ -67,11 +67,8 @@ document.getElementById('holo-btn').addEventListener('click', () => {
   renderer.domElement.style.transform = 'scaleY(-1)';
   if (textContainer) {
     holoModeActive = true;
-    // Move box above the orb on the physical screen so it appears above Nyra
-    // in the reflection (top of screen = above orb in the holographic image).
-    textContainer.style.bottom = 'auto';
-    textContainer.style.top = '15%';
     textContainer.style.transform = 'translateX(-50%) scaleY(-1)';
+    updateHoloTextPosition();
   }
 
   // Auto-cycle states for demo
@@ -137,12 +134,12 @@ animate();
 // Adjust dialogue box vertical position based on orientation.
 // Landscape screens are shorter so the default 13% clips into the wing area.
 let holoModeActive = false;
+
+// Normal mode: portrait = bottom 13%, landscape = top edge.
 function updateTextPosition() {
   if (!textContainer || holoModeActive) return;
   const isLandscape = window.innerWidth > window.innerHeight;
   if (isLandscape) {
-    // In landscape the wings fill most of the vertical center, so anchor the
-    // box to the top edge where there is always clear space above Nyra.
     textContainer.style.bottom = 'auto';
     textContainer.style.top    = '0';
   } else {
@@ -150,6 +147,20 @@ function updateTextPosition() {
     textContainer.style.bottom = '13%';
   }
 }
+
+// Holo mode: the Pepper's Ghost reflection inverts Y (physical top → hologram bottom).
+// Wing bottom in the hologram always sits at ~29.5% from hologram bottom.
+// The 88px box must fit entirely below that line.
+// Portrait (H ≈ 910px): top 15% → box top in hologram at 24.7% from bottom. Fits.
+// Landscape (H ≈ 420px): top 15% → box top in hologram at 36% from bottom. Overlaps!
+//   Fix: top 2% → box top in hologram at 23% from bottom. Clears wings with ~6% margin.
+function updateHoloTextPosition() {
+  if (!textContainer) return;
+  const isLandscape = window.innerWidth > window.innerHeight;
+  textContainer.style.bottom = 'auto';
+  textContainer.style.top    = isLandscape ? '2%' : '15%';
+}
+
 updateTextPosition();
 
 // Resize
@@ -157,5 +168,6 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  updateTextPosition();
+  if (holoModeActive) updateHoloTextPosition();
+  else updateTextPosition();
 });
