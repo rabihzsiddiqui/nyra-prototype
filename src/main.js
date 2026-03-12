@@ -7,7 +7,6 @@ import { leftWing, rightWing, updateWing } from './wings.js';
 import { particlesMesh, updateParticles } from './particles.js';
 import { createTextOverlay, update as textUpdate, tick as textTick } from './text-display.js';
 
-const isPeppersGhost = new URLSearchParams(window.location.search).get('peppersghost') === 'true';
 
 // Scene
 const scene = new THREE.Scene();
@@ -20,12 +19,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x000000, 1);
 document.body.appendChild(renderer.domElement);
 
-if (isPeppersGhost) {
-  renderer.domElement.style.transform = 'scaleY(-1)';
-  document.getElementById('state-hud').style.display = 'none';
-} else {
-  createTextOverlay();
-}
+createTextOverlay();
 
 scene.add(orbMesh);
 scene.add(leftWing);
@@ -64,8 +58,15 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '4') setState('speaking');
 });
 
-// Pepper's Ghost mode: auto-cycle states and request wake lock
-if (isPeppersGhost) {
+// Holo Mode button
+document.getElementById('holo-btn').addEventListener('click', () => {
+  // Hide button, HUD, and dialogue box -- show only the visual elements
+  document.getElementById('holo-btn').style.opacity = '0';
+  setTimeout(() => { document.getElementById('holo-btn').style.display = 'none'; }, 400);
+  document.getElementById('state-hud').style.display = 'none';
+  renderer.domElement.style.transform = 'scaleY(-1)';
+
+  // Auto-cycle states for demo
   const CYCLE = [
     { state: 'idle',      duration: 5000 },
     { state: 'listening', duration: 3000 },
@@ -81,6 +82,7 @@ if (isPeppersGhost) {
   }
   runCycle();
 
+  // Keep screen awake
   if ('wakeLock' in navigator) {
     const requestWakeLock = () => navigator.wakeLock.request('screen').catch(() => {});
     requestWakeLock();
@@ -88,7 +90,7 @@ if (isPeppersGhost) {
       if (document.visibilityState === 'visible') requestWakeLock();
     });
   }
-}
+});
 
 // Render loop
 const clock = new THREE.Clock();

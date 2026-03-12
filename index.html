@@ -63,9 +63,35 @@
     .state-btn { padding: 6px 10px; font-size: 9px; letter-spacing: 0.05em; }
     .state-key { width: 13px; height: 13px; line-height: 13px; margin-right: 4px; font-size: 8px; }
   }
+  #holo-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 7px 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.35);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: opacity 400ms ease;
+    z-index: 10;
+  }
+  #holo-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6);
+    border-color: rgba(255,255,255,0.2);
+  }
 </style>
 </head>
 <body>
+
+<button id="holo-btn">Holo Mode</button>
 
 <div id="state-hud">
   <div class="state-btn active" data-state="idle"><span class="state-key">1</span>Idle</div>
