@@ -65,7 +65,14 @@ document.getElementById('holo-btn').addEventListener('click', () => {
   setTimeout(() => { document.getElementById('holo-btn').style.display = 'none'; }, 400);
   document.getElementById('state-hud').style.display = 'none';
   renderer.domElement.style.transform = 'scaleY(-1)';
-  if (textContainer) textContainer.style.transform = 'translateX(-50%) scaleY(-1)';
+  if (textContainer) {
+    holoModeActive = true;
+    // Move box above the orb on the physical screen so it appears above Nyra
+    // in the reflection (top of screen = above orb in the holographic image).
+    textContainer.style.bottom = 'auto';
+    textContainer.style.top = '15%';
+    textContainer.style.transform = 'translateX(-50%) scaleY(-1)';
+  }
 
   // Auto-cycle states for demo
   const CYCLE = [
@@ -127,9 +134,20 @@ function animate() {
 }
 animate();
 
+// Adjust dialogue box vertical position based on orientation.
+// Landscape screens are shorter so the default 13% clips into the wing area.
+let holoModeActive = false;
+function updateTextPosition() {
+  if (!textContainer || holoModeActive) return;
+  const isLandscape = window.innerWidth > window.innerHeight;
+  textContainer.style.bottom = isLandscape ? '4%' : '13%';
+}
+updateTextPosition();
+
 // Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  updateTextPosition();
 });
