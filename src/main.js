@@ -138,14 +138,8 @@ let holoModeActive = false;
 // Normal mode: portrait = bottom 13%, landscape = top edge.
 function updateTextPosition() {
   if (!textContainer || holoModeActive) return;
-  const isLandscape = window.innerWidth > window.innerHeight;
-  if (isLandscape) {
-    textContainer.style.bottom = 'auto';
-    textContainer.style.top    = '0';
-  } else {
-    textContainer.style.top    = 'auto';
-    textContainer.style.bottom = '13%';
-  }
+  textContainer.style.top    = 'auto';
+  textContainer.style.bottom = '13%';
 }
 
 // Holo mode: the Pepper's Ghost reflection inverts Y (physical top → hologram bottom).
