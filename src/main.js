@@ -65,7 +65,7 @@ document.getElementById('holo-btn').addEventListener('click', () => {
   setTimeout(() => { document.getElementById('holo-btn').style.display = 'none'; }, 400);
   document.getElementById('state-hud').style.display = 'none';
   renderer.domElement.style.transform = 'scaleY(-1)';
-  if (textContainer) textContainer.style.transform = 'scaleY(-1)';
+  if (textContainer) textContainer.style.transform = 'translateX(-50%) scaleY(-1)';
 
   // Auto-cycle states for demo
   const CYCLE = [
