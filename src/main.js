@@ -140,7 +140,15 @@ let holoModeActive = false;
 function updateTextPosition() {
   if (!textContainer || holoModeActive) return;
   const isLandscape = window.innerWidth > window.innerHeight;
-  textContainer.style.bottom = isLandscape ? '0' : '13%';
+  if (isLandscape) {
+    // In landscape the wings fill most of the vertical center, so anchor the
+    // box to the top edge where there is always clear space above Nyra.
+    textContainer.style.bottom = 'auto';
+    textContainer.style.top    = '0';
+  } else {
+    textContainer.style.top    = 'auto';
+    textContainer.style.bottom = '13%';
+  }
 }
 updateTextPosition();
 
